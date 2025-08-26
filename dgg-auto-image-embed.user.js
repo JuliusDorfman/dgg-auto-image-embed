@@ -1,8 +1,14 @@
 // ==UserScript==
 // @name        DGG Auto Image Embed
-// @namespace   https://boofus.dev (original by legolas, vyneer)
-// @description Shows a preview of images linked in destiny.gg
+// @namespace   boofus
+// @description Shows a preview of images linked in destiny.gg chat without opening new tabs. NSFW blur toggle + preserves autoscroll.
 // @match       https://www.destiny.gg/embed/chat*
+// @icon        https://cdn.destiny.gg/2.49.0/emotes/6296cf7e8ccd0.png
+// @version     10.0.1
+// @author      boofus (credits: legolas, vyneer)
+// @license     MIT
+// @grant       GM_xmlhttpRequest
+// @run-at      document-end
 // @connect     discordapp.net
 // @connect     discordapp.com
 // @connect     pbs.twimg.com
@@ -10,17 +16,10 @@
 // @connect     imgur.com
 // @connect     gyazo.com
 // @connect     redd.it
-// @grant       GM_xmlhttpRequest
-// @version     10.0.1
-// @run-at      document-end
-// @icon        https://cdn.destiny.gg/2.49.0/emotes/6296cf7e8ccd0.png
-// @author      boofus (credits: legolas, vyneer)
-// @homepageURL https://github.com/boofus/dgg-auto-image-embed
-// @supportURL  https://github.com/boofus/dgg-auto-image-embed/issues
 // ==/UserScript==
 
 
-const imageRegex = /http.+(redd.it|pbs.twimg.com|(media|cdn).discordapp.(net|com)|imgur.com|gyazo.com|polecat.me).+(png|jpe?g|gifv?)/gm
+const imageRegex = /http.+(redd.it|pbs.twimg.com|(media|cdn).discordapp.(net|com)|imgur.com|gyazo.com|polecat.me).+(png|jpe?g|gifv?)/gm;
 let overlay;
 
 // START STOLEN FROM VYNEER
@@ -34,59 +33,30 @@ class ConfigItem {
 }
 
 const configItems = {
-    BlurNSFW : new ConfigItem("BlurNSFW",true),
-    HideLink : new ConfigItem("HideLink",true)
+    BlurNSFW: new ConfigItem("BlurNSFW", true),
+    HideLink: new ConfigItem("HideLink", true)
 };
-
 class Config {
-    #configItems;
-    #configKeyPrefix;
     constructor(configKeys, keyPrefix) {
-        this.#configItems = configKeys;
-        this.#configKeyPrefix = keyPrefix;
-        // Creates setter funcs in this object (config)
-        // So when the config.key value is changed it is also saved in localStorage
-        for (const key in this.#configItems) {
-            const configKey = this.#configItems[key];
-            const keyName = configKey.keyName;
-            const privateKeyName = `#${keyName}`;
-            Object.defineProperty(this, key, {
-                set: function (value) {
-                    // Set the private value
-                    this[privateKeyName] = value;
-                    // Save it to persistent storage as well
-                    this.#save(keyName, value);
-                },
-                get: function () {
-                    // Check if value is saved in config object
-                    if (this[privateKeyName] === undefined) {
-                        // If not, load it from persistent storage, or use default value
-                        this[privateKeyName] = this.#load(keyName) ?? configKey.defaultValue;
-                    }
-                    return this[privateKeyName];
-                },
-            });
-        }
+        this.configItems = configKeys;
+        this.configKeyPrefix = keyPrefix;
     }
-    #getFullKeyName(configKey) {
-        return `${this.#configKeyPrefix}${configKey}`;
+
+    getFullKeyName(configKey) {
+        return `${this.configKeyPrefix}${configKey}`;
     }
-    #save(configKey, value) {
-        // Persist the value in LocalStorage
-        const fullKeyName = this.#getFullKeyName(configKey);
+
+    save(configKey, value) {
+        const fullKeyName = this.getFullKeyName(configKey);
         unsafeWindow.localStorage.setItem(fullKeyName, JSON.stringify(value));
     }
-    #load(configKey) {
-        // Get the value we persisted, in localStorage
-        const fullKeyName = this.#getFullKeyName(configKey);
-        const item = unsafeWindow.localStorage.getItem(fullKeyName);
-        if (item != null) {
-            const parsedItem = JSON.parse(item);
-            return parsedItem;
-        }
-    }
-};
 
+    load(configKey) {
+        const fullKeyName = this.getFullKeyName(configKey);
+        const item = unsafeWindow.localStorage.getItem(fullKeyName);
+        if (item != null) return JSON.parse(item);
+    }
+}
 const config = new Config(configItems, "img-util.");
 // Sticky-bottom state must be global so image handler can read it
 let shouldStickToBottom = true;
@@ -147,8 +117,8 @@ let addSettings = () => {
     settingsArea.appendChild(blurNsfw);
     settingsArea.appendChild(hideLink);
 
-    console.log("[D.gg Img Preview] Settings Added")
-}
+    console.log("[D.gg Img Preview] Settings Added");
+};
 
 // END STOLEN FROM VYNEER
 
@@ -171,22 +141,22 @@ function waitForElm(selector) { // stolen from stack overflow
     });
 }
 
-let chatObserver = new MutationObserver(function(mutations) {
-    if(mutations[0].addedNodes[0] && mutations[0].addedNodes[0].tagName == "DIV" && mutations[0].addedNodes[0].querySelector(".externallink")){
+let chatObserver = new MutationObserver(function (mutations) {
+    if (mutations[0].addedNodes[0] && mutations[0].addedNodes[0].tagName == "DIV" && mutations[0].addedNodes[0].querySelector(".externallink")) {
         let links = mutations[0].addedNodes[0].querySelectorAll(".externallink ");
         links.forEach((el) => {
-            if(imageRegex.test(el.href)){
+            if (imageRegex.test(el.href)) {
 
                 GM_xmlhttpRequest({ // get image data since csp blocks us from just using the url directly
                     method: "GET",
                     url: el.href,
                     responseType: 'blob',
-                    onload: function(res) {
+                    onload: function (res) {
 
                         var reader = new FileReader();
                         reader.readAsDataURL(res.response);
 
-                        reader.onloadend = function() {
+                        reader.onloadend = function () {
 
                             var base64data = reader.result;
                             let PreviewImage = unsafeWindow.document.createElement("img");
@@ -202,7 +172,7 @@ let chatObserver = new MutationObserver(function(mutations) {
                             PreviewImage.style.cursor = "pointer";
 
                             let blurred = false;
-                            if(el.className.includes("nsfw") && config.BlurNSFW || el.className.includes("nsfl") && config.BlurNSFW){
+                            if (el.className.includes("nsfw") && config.BlurNSFW || el.className.includes("nsfl") && config.BlurNSFW) {
                                 PreviewImage.style.filter = "blur(15px)";
                                 blurred = true;
                             }
@@ -210,10 +180,10 @@ let chatObserver = new MutationObserver(function(mutations) {
                             // PEPE WINS
 
                             PreviewImage.onclick = () => {
-                                if(blurred){
+                                if (blurred) {
                                     PreviewImage.style.filter = "blur(0px)";
                                     blurred = false;
-                                }else{
+                                } else {
                                     overlay.style.display = "flex";
                                     let PreviewImg = unsafeWindow.document.createElement("img");
                                     PreviewImg.src = base64data;
@@ -230,12 +200,12 @@ let chatObserver = new MutationObserver(function(mutations) {
                                     openOriginal.target = "_blank";
                                     openOriginal.style.marginTop = "5px";
                                     openOriginal.style.color = "#999";
-                                    overlay.appendChild(openOriginal)
+                                    overlay.appendChild(openOriginal);
                                 }
-                            }
+                            };
 
                             el.parentNode.appendChild(PreviewImage);
-                            if ( config.HideLink ) { el.remove(); };
+                            if (config.HideLink) { el.remove(); }
 
                             // append image, then only scroll if user was at bottom
                             const chatEl = unsafeWindow.document.getElementsByClassName("chat-lines")[0];
@@ -255,12 +225,12 @@ let chatObserver = new MutationObserver(function(mutations) {
                             el.parentNode.appendChild(PreviewImage);
                             if (config.HideLink) { el.remove(); }
 
-                        }
+                        };
 
                     }
-                })
+                });
             }
-        })
+        });
     }
 });
 console.log("[D.gg Img Preview] Connecting");
