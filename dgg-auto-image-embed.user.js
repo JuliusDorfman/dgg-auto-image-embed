@@ -16,10 +16,12 @@
 // @connect     imgur.com
 // @connect     gyazo.com
 // @connect     redd.it
+// @downloadURL https://update.greasyfork.org/scripts/547316/DGG%20Auto%20Image%20Embed.user.js
+// @updateURL https://update.greasyfork.org/scripts/547316/DGG%20Auto%20Image%20Embed.meta.js
 // ==/UserScript==
 
 
-const imageRegex = /http.+(redd.it|pbs.twimg.com|(media|cdn).discordapp.(net|com)|imgur.com|gyazo.com|polecat.me).+(png|jpe?g|gifv?)/gm;
+const imageRegex = /http.+(redd.it|pbs.twimg.com|(media|cdn).discordapp.(net|com)|imgur.com|gyazo.com|polecat.me|catbox.moe).+\.(png|jpe?g|gifv?)/gm;
 let overlay;
 
 // START STOLEN FROM VYNEER
