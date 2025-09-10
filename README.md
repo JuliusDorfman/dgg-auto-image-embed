@@ -1,3 +1,7 @@
+# Proudly used by over 300 users! 
+(But actually it's impossible to tell because it's an open source and users never use the GreasyFork download link they just copy paste the code locally
+but EVERYONE TELLS ME THEY LOVE IT!)
+
 # dgg-auto-image-embed
 Original Script by legolas which was stolen from Vyneer
 
